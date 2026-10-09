@@ -1,0 +1,54 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Build
+        shell: pwsh
+        run: |
+          go build -trimpath -ldflags "-s -w" -o dist/StorageTrashCleaner.exe .
+          $env:GOARCH = "arm64"
+          go build -trimpath -ldflags "-s -w" -o dist/StorageTrashCleaner-arm64.exe .
+
+      - name: Smoke test (faqat o'qish rejimi, hech narsa o'chirilmaydi)
+        shell: pwsh
+        run: |
+          ./dist/StorageTrashCleaner.exe --list > list.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host "O'rnatilgan dasturlar: $((Get-Content list.txt).Count)"
+          ./dist/StorageTrashCleaner.exe --orphans
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StorageTrashCleaner
+          path: dist/*.exe
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.exe
