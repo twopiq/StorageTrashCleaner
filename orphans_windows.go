@@ -265,32 +265,39 @@ func (o *orphanScanner) scanShortcuts() {
 			return nil
 		})
 	}
-	// Start menyudagi bo'sh papkalar (yoki faqat buzilgan yorliqlari qolganlar).
+	// Start menyudagi ilova papkalari: ichida kamida bitta buzilgan yorliq bo'lsa va
+	// boshqa hech qanday ishlaydigan fayl qolmagan bo'lsa. desktop.ini bor papkalar —
+	// Windows'ning o'z papkalari (Accessories, Maintenance...) — tekshirilmaydi.
 	for _, root := range nonEmpty(sys.StartMenu, sys.CommonStartMenu) {
 		entries, _ := os.ReadDir(root)
 		for _, e := range entries {
 			full := filepath.Join(root, e.Name())
-			if !e.IsDir() || !isSafeDir(full) {
+			if !e.IsDir() || !isSafeDir(full) || orphanSkipped(e.Name()) || exists(filepath.Join(full, "desktop.ini")) {
 				continue
 			}
-			alive := false
+			alive, broken := false, 0
 			filepath.WalkDir(full, func(p string, d os.DirEntry, err error) error {
-				if err != nil || d.IsDir() || alive {
+				if err != nil || d.IsDir() {
 					return nil
 				}
-				if strings.EqualFold(d.Name(), "desktop.ini") {
-					return nil
-				}
-				if !o.seen[(&Leftover{Kind: LFile, Path: p}).id()] {
+				if o.seen[(&Leftover{Kind: LFile, Path: p}).id()] {
+					broken++
+				} else if !strings.EqualFold(d.Name(), "desktop.ini") {
 					alive = true
 				}
 				return nil
 			})
-			if !alive {
-				o.add(&Leftover{Kind: LDir, Path: full, Group: GroupShortcuts, Reason: "Start menyuda ishlamaydigan yorliqlar papkasi"})
+			if !alive && broken > 0 {
+				o.add(&Leftover{Kind: LDir, Path: full, Group: GroupShortcuts, Reason: "Start menyudagi papka — undagi barcha yorliqlar ishlamaydi"})
 			}
 		}
 	}
+}
+
+// microsoftRelated Windows/Microsoft komponentlariga tegishli vazifa yoki xizmat —
+// ularni avtomatik belgilamaymiz.
+func microsoftRelated(name, path string) bool {
+	return strings.Contains(normName(name), "microsoft") || strings.Contains(strings.ToLower(path), `\microsoft`)
 }
 
 func (o *orphanScanner) scanAutorun() {
@@ -303,7 +310,8 @@ func (o *orphanScanner) scanAutorun() {
 		for _, n := range names {
 			v := regString(k, n)
 			if exe := exePathFromCommand(v); localMissing(exe) {
-				o.add(&Leftover{Kind: LRegValue, Reg: r, Value: n, Group: GroupAutorun, Reason: "avtoyuklash: fayl topilmadi — " + exe})
+				o.add(&Leftover{Kind: LRegValue, Reg: r, Value: n, Group: GroupAutorun, Risky: microsoftRelated(n, exe),
+					Reason: "avtoyuklash: fayl topilmadi — " + exe})
 			}
 		}
 		k.Close()
@@ -313,7 +321,8 @@ func (o *orphanScanner) scanAutorun() {
 			continue
 		}
 		if localMissing(t.Command) {
-			o.add(&Leftover{Kind: LTask, Path: t.Name, Group: GroupAutorun, Reason: "vazifa: fayl topilmadi — " + t.Command})
+			o.add(&Leftover{Kind: LTask, Path: t.Name, Group: GroupAutorun, Risky: microsoftRelated(t.Name, t.Command),
+				Reason: "vazifa: fayl topilmadi — " + t.Command})
 		}
 	}
 	root := servicesRoot()

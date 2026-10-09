@@ -347,7 +347,7 @@ func humanSize(n int64) string {
 // orphanSkip — bu nomlar bilan boshlanadigan papka/kalitlar tizimga yoki
 // umumiy vositalarga tegishli, ularni "yetim" deb hisoblamaymiz.
 var orphanSkip = []string{
-	"microsoft", "windows", "msbuild", "referenceassemblies", "commonfiles", "internetexplorer",
+	"microsoft", "windows", "modifiablewindowsapps", "dbg", "designer", "opendtrace", "msbuild", "referenceassemblies", "commonfiles", "internetexplorer",
 	"uninstallinformation", "packagecache", "packages", "package", "regid", "ssh", "uso",
 	"softwaredistribution", "comms", "connecteddevicesplatform", "crashdumps", "d3dscache", "temp",
 	"tmp", "programs", "publishers", "history", "peerdistrepub", "applicationdata",

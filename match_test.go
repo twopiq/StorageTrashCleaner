@@ -138,7 +138,7 @@ func TestLooseMatchAndSkip(t *testing.T) {
 	if looseMatch("WinRAR", names) {
 		t.Error("WinRAR should not match")
 	}
-	for _, e := range []string{"Microsoft", "Packages", "{1234ABCD-0000-0000-0000-000000000000}", ".vscode", "NVIDIA Corporation"} {
+	for _, e := range []string{"Microsoft", "Packages", "{1234ABCD-0000-0000-0000-000000000000}", ".vscode", "NVIDIA Corporation", "ModifiableWindowsApps", "dbg"} {
 		if !orphanSkipped(e) {
 			t.Errorf("orphanSkipped(%q) = false", e)
 		}
