@@ -36,8 +36,9 @@ jobs:
       - name: Smoke test (faqat o'qish rejimi, hech narsa o'chirilmaydi)
         shell: pwsh
         run: |
-          ./dist/StorageTrashCleaner.exe --list | Select-Object -First 25
+          ./dist/StorageTrashCleaner.exe --list > list.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host "O'rnatilgan dasturlar: $((Get-Content list.txt).Count)"
           ./dist/StorageTrashCleaner.exe --orphans
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
